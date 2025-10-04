@@ -7,7 +7,7 @@ Check your Zama Creator Score based on smart followers, reach, engagement, and p
 ## ⚡ Open the Checker Online
 You can open the checker directly in your browser via GitHub Pages:
 
-[Open Zama Checker](https://yourusername.github.io/zama-checker/zama_checker.html)
+[Open Zama Checker](https://github.com/Virat18alt/Zamacreatorchecker/blob/main/zama_checker.html)
 
 ---
 
