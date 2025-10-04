@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zama Creator Score Checker</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: url('https://i.imgur.com/3P2wKfJ.jpg') no-repeat center center fixed;
+      background-size: cover;
+      margin: 0;
+      padding: 0;
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding-top: 50px;
+    }
+    .container {
+      background: rgba(0,0,0,0.75);
+      border-radius: 15px;
+      padding: 30px;
+      width: 350px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+      text-align: center;
+    }
+    h1 {
+      font-size: 1.8em;
+      margin-bottom: 20px;
+      text-shadow: 1px 1px 4px #000;
+    }
+    input[type="number"], input[type="text"] {
+      width: 90%;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 8px;
+      border: none;
+      font-size: 1em;
+    }
+    button {
+      padding: 10px 20px;
+      margin-top: 10px;
+      border: none;
+      border-radius: 8px;
+      background: #1da1f2;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    button:hover {
+      background: #0d95e8;
+    }
+    #score {
+      margin-top: 20px;
+      font-size: 1.2em;
+      padding: 15px;
+      border-radius: 10px;
+      transition: 0.3s;
+    }
+    .rules {
+      background: rgba(255,255,255,0.1);
+      padding: 15px;
+      border-radius: 10px;
+      text-align: left;
+      font-size: 0.85em;
+      margin-top: 20px;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+    footer {
+      margin-top: 15px;
+      font-size: 0.85em;
+      color: #ddd;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Zama Creator Score Checker</h1>
+
+  <input type="text" id="username" placeholder="Twitter handle"><br>
+  <input type="number" id="smartFollowers" placeholder="Smart followers"><br>
+  <input type="number" id="impressions" placeholder="Impressions (reach)"><br>
+  <input type="number" id="likes" placeholder="Likes"><br>
+  <input type="number" id="retweets" placeholder="Retweets"><br>
+  <input type="number" id="quotes" placeholder="Quotes"><br>
+  <input type="number" id="posts" placeholder="Posts this month"><br>
+  <button onclick="calculateScore()">Calculate Score</button>
+
+  <div id="score"></div>
+
+  <div class="rules">
+    <b>Rules & Formula:</b><br>
+    - Quality followers: smart, verified, active humans.<br>
+    - Reach: how many people saw your posts this month.<br>
+    - Meaningful interactions: likes, retweets, quotes (quotes count more).<br>
+    - Engagement quality: healthy rates only; suspiciously high capped.<br>
+    - Consistency: posting more helps (+40% max).<br>
+    - Eligibility: ≥2 posts in month.<br>
+    - Anti-gaming: ER>20% → score 0; ER>10% & impressions<50k → penalty 0.3.<br>
+    - Score calculation (v0.1): SF, IMP, ENG, SRM, ER, multipliers.<br>
+    - Top rewards: $50k pool for top 100; NFTs for 101–500.
+  </div>
+
+  <footer>Created by @RiseChainX</footer>
+</div>
+
+<script>
+function calculateScore() {
+  const user = document.getElementById('username').value.trim();
+  const SF = parseFloat(document.getElementById('smartFollowers').value);
+  const IMP = parseFloat(document.getElementById('impressions').value);
+  const likes = parseFloat(document.getElementById('likes').value);
+  const retweets = parseFloat(document.getElementById('retweets').value);
+  const quotes = parseFloat(document.getElementById('quotes').value);
+  const posts = parseFloat(document.getElementById('posts').value);
+
+  if(!user || isNaN(SF)||isNaN(IMP)||isNaN(likes)||isNaN(retweets)||isNaN(quotes)||isNaN(posts)) {
+    alert('Fill all fields with valid numbers!');
+    return;
+  }
+
+  if(posts < 2 || IMP <=0){
+    document.getElementById('score').innerHTML = `<p>@${user} is ineligible (posts<2 or impressions≤0).</p>`;
+    return;
+  }
+
+  const ER = ((likes + retweets + quotes)/IMP) * 100;
+  if(ER > 20){
+    document.getElementById('score').innerHTML = `<p>@${user} disqualified (ER>${ER.toFixed(2)}%).</p>`;
+    return;
+  }
+
+  const SRM = Math.min(1, IMP/100000);
+  const SFscore = Math.min(Math.log10(SF+1),3.0);
+  const qW = 4 + 2*SRM;
+  const ENG = likes + 3*retweets + qW*quotes;
+  const EngObs = Math.max(ENG, ER/100*IMP);
+  const ER_cap = 0.01 + 0.04*SRM;
+  const EffEng = Math.min(EngObs, IMP*ER_cap);
+  const Clamp = EffEng / EngObs;
+  const SENG = Math.min(0.5*EffEng,0.5*EffEng);
+  const QE = Math.min(Math.log(1+IMP/Math.max(1,100000))*SRM,2.0)*SRM;
+  const postMult = 1 + 0.02*Math.min(posts,20);
+  const erMult = 0.90 + 2*Math.min(ER/100,0.05);
+
+  let baseScore = (SFscore*500) + (Math.sqrt(IMP)*10) + ((ENG*0.7)*Clamp + SENG*150)*Math.pow(SRM,1.5) + (QE*120);
+  let finalScore = baseScore * postMult * erMult;
+
+  if(ER>10 && IMP<50000) finalScore *= 0.3;
+
+  let color = finalScore<40 ? '#ff4d4d' : finalScore<70 ? '#ffd633' : '#33ff77';
+  document.getElementById('score').innerHTML = `
+    <div style="background:${color};padding:15px;border-radius:10px;">
+      <p>@${user}'s Zama Creator Score: <strong>${finalScore.toFixed(2)}</strong></p>
+      <p>ER: ${ER.toFixed(2)}%, Posts: ${posts}</p>
+    </div>
+  `;
+}
+</script>
+</body>
+</html>
